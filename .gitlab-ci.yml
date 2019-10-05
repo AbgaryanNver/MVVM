@@ -1,0 +1,75 @@
+# Стадии сборки приложения
+stages:
+  - setup # настройка зависимостей проекта
+  - test # тестирование сборки
+  - analyze # анализ кода и результатов сборки
+  - clean # очистка кэша от предыдущего пайпа
+
+# Настройка переменных
+variables:
+  LC_ALL: "en_US.UTF-8" # для fastlane
+  LANG: "en_US.UTF-8" # для fastlane
+
+#
+# Job'ы используемые при сборке приложения
+#
+
+# Job для запуска настройки внешних зависимостей проекта
+setup_dependencies:
+  stage: setup # для какой стадии запускать
+  only: # Ограничение на название ветки (запускаем только на тасках)
+    - /^SCAN-.*$/
+  before_script:
+    - ./setup.sh
+  script: # Что выполняется в процессе работы
+    - bundle config build.nokogiri --use-system-libraries
+    - bundle update
+  only: # Ограничиваем возможность выполнения только реквестами на слияние
+    - merge_requests
+  artifacts: # Артефакты передающиеся между джобами
+    name: ${CI_COMMIT_REF_SLUG}
+    untracked: true
+    when: always
+  tags: 
+    - ios_pay # для запуска на нашем агенте
+
+# Job для запуска модульных тестов
+unit_tests:
+  stage: test
+  only:
+    - /^SCAN-.*$/
+    - merge_requests
+  script: 
+    - bundle exec fastlane run_unit_tests
+  tags:
+    - ios_pay
+  artifacts: # Артефакты передающиеся между джобами
+    name: ${CI_COMMIT_REF_SLUG}
+    untracked: true
+    when: always
+    expire_in: 30 min
+    paths:
+      - ./reports/**
+  when: on_success
+
+# Job для запуска Danger'a
+run_danger:
+  stage: analyze
+  script: 
+    - bundle exec danger --fail-on-errors=true --new-comment --remove-previous-comments
+  only:
+    - merge_requests
+  tags:
+    - ios_pay
+  when: always
+
+# Job для очистки кэша перед новым пайпом
+clean_cache:
+  stage: clean
+  script:
+    - rm -rf ~/cache/ios/pricescanner/"${CI_COMMIT_REF_SLUG}"/** 
+  only:
+    - merge_requests
+  tags:
+    - ios_pay
+  when: always

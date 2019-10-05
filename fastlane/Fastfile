@@ -1,0 +1,52 @@
+default_platform(:ios)
+
+fastlane_version '2.130.0'
+
+platform :ios do
+  before_all do |lane, options|
+    ENV["LANG"]="en_US.UTF-8"
+    ENV["LANGUAGE"]="en_US.UTF-8"
+    ENV["LC_ALL"]="en_US.UTF-8"
+    ENV["XCPRETTY_JSON_FILE_OUTPUT"]="./reports/buildinfo.json"
+    clear_derived_data()
+  end
+
+  desc "Лэйн для запуска модульных тестов"
+  lane :run_unit_tests do
+  	run_tests(
+  		        project: "pricescanner.xcodeproj",
+  		        scheme: "pricescannerTests",
+  		        configuration: "Debug",
+              device: "iPhone SE",
+              prelaunch_simulator: true,
+          		clean: true,
+          		code_coverage: true,
+          		formatter: "xcpretty-json-formatter",
+              output_directory: "./reports",
+          		skip_slack: true,
+  		        )  
+  end
+
+  desc "Лэйн для запуска UI тестов"
+  lane :run_ui_tests do   
+    run_tests(
+             app_identifier: "kz.btsdigital.pricescanner",
+             project: "pricescanner.xcodeproj",
+             reset_simulator: true,
+             prelaunch_simulator: true,
+             test_without_building: true,
+             scheme: "pricescannerUITests",
+             configuration: "Debug",
+             devices: ["iPhone SE", "iPhone 6s", "iPhone 8 Plus", "iPhone X", "iPhone XR", "iPhone XS Max"],
+             max_concurrent_simulators: 6,
+             output_style: "standard",
+             output_types: "html",
+             output_files: "ui_tests_report.html",
+             include_simulator_logs: true,
+             result_bundle: true,
+             # sdk: ""
+             skip_slack: true,
+             )
+  end
+end
+
